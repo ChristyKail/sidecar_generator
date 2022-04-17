@@ -5,6 +5,17 @@ import shutil
 import sys
 
 
+class PrintColors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 class SidecarGenerator:
 
     def __init__(self, file_name):
@@ -23,7 +34,7 @@ class SidecarGenerator:
             contents = f.readlines()
 
         files_list = [strip_xml_tags(x) for x in contents if x.strip().startswith('<file>')]
-        md5_list = [strip_xml_tags(x) for x in contents if x.strip().startswith('<md5>')]
+        md5_list = [strip_xml_tags(x).lower() for x in contents if x.strip().startswith('<md5>')]
 
         md5_dictionary = dict(zip(files_list, md5_list))
 
@@ -79,7 +90,7 @@ def strip_xml_tags(string):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        print('Usage: python3 sidecar_generator.py <mhl_file_name>')
+        print('{}Usage: python3 sidecar_generator.py <mhl_file_name>{}'.format(PrintColors.FAIL, PrintColors.ENDC))
         sys.exit(1)
 
     mhl_files = [os.path.abspath(x) for x in sys.argv[1:] if os.path.isfile(x) and x.endswith('.mhl')]
@@ -87,11 +98,15 @@ if __name__ == '__main__':
     if mhl_files:
         for mhl_file in mhl_files:
 
+            print('{}Processing: {}{}'.format(PrintColors.OKBLUE, os.path.basename(mhl_file), PrintColors.ENDC))
+
             try:
                 SidecarGenerator(mhl_file)
+            except shutil.SameFileError:
+                print('{}MHL file is already named the volume name{}'.format(PrintColors.WARNING, PrintColors.ENDC))
             except Exception as e:
-                print('Error: ' + str(e))
+                print('{}Error: {}{}'.format(PrintColors.FAIL, e, PrintColors.ENDC))
 
     else:
-        print('No mhl files found')
+        print('{}No mhl files found{}'.format(PrintColors.FAIL, PrintColors.ENDC))
         sys.exit(1)
