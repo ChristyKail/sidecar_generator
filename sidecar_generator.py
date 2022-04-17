@@ -20,12 +20,17 @@ class SidecarGenerator:
 
     def __init__(self, file_name):
         self.mhl_file_name = os.path.abspath(file_name)
-        self.md5_dictionary = self.load_source_mhl()
+        self.md5_dictionary = {}
+        self.xxhash_dictionary = {}
+
+        self.load_source_mhl()
+
         self.volume_name = self.get_volume_name()
         print('Volume name: ' + self.volume_name)
 
         self.save_txt_file()
         self.save_md5_file()
+        self.save_xxhash_file()
         self.copy_mhl_file()
 
     def load_source_mhl(self):
@@ -35,10 +40,21 @@ class SidecarGenerator:
 
         files_list = [strip_xml_tags(x) for x in contents if x.strip().startswith('<file>')]
         md5_list = [strip_xml_tags(x).lower() for x in contents if x.strip().startswith('<md5>')]
+        xxhash_list = [strip_xml_tags(x).lower() for x in contents if x.strip().startswith('<xxhash64be>')]
 
-        md5_dictionary = dict(zip(files_list, md5_list))
+        file_sizes = [int(strip_xml_tags(x)) for x in contents if x.strip().startswith('<size>')]
 
-        return md5_dictionary
+        total_size = sum(file_sizes)
+
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if total_size < 1000:
+                print('Total size: ' + str(round(total_size,2)) + unit)
+                break
+
+            total_size /= 1000
+
+        self.md5_dictionary = dict(zip(files_list, md5_list))
+        self.xxhash_dictionary = dict(zip(files_list, xxhash_list))
 
     def get_volume_name(self):
 
@@ -69,6 +85,16 @@ class SidecarGenerator:
         with open(txt_file_name, 'w') as f:
             for key in self.md5_dictionary.keys():
                 f.write(key + '\n')
+
+    def save_xxhash_file(self):
+        directory = os.path.dirname(self.mhl_file_name)
+
+        xxhash_file_name = os.path.join(directory, self.volume_name + '.xxhash')
+        print('Saving xxhash file: ' + xxhash_file_name)
+
+        with open(xxhash_file_name, 'w') as f:
+            for key, value in self.xxhash_dictionary.items():
+                f.write(value + '  ' + key + '\n')
 
     def copy_mhl_file(self):
 
